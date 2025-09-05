@@ -1,0 +1,24 @@
+                               Table "public.products"
+   Column   |            Type             | Collation | Nullable |      Default      
+------------+-----------------------------+-----------+----------+-------------------
+ id         | uuid                        |           | not null | gen_random_uuid()
+ nome       | character varying(255)      |           | not null | 
+ categoria  | character varying(50)       |           | not null | 
+ descricao  | text                        |           | not null | 
+ preco      | numeric(10,2)               |           | not null | 
+ estoque    | integer                     |           | not null | 0
+ imagem     | text                        |           |          | 
+ created_at | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+ updated_at | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+Indexes:
+    "products_pkey" PRIMARY KEY, btree (id)
+    "idx_products_categoria" btree (categoria)
+Check constraints:
+    "products_categoria_check" CHECK (categoria::text = ANY (ARRAY['tradicional'::character varying, 'premium'::character varying, 'especial'::character varying, 'refrigerantes'::character varying]::text[]))
+    "products_estoque_check" CHECK (estoque >= 0)
+    "products_preco_check" CHECK (preco > 0::numeric)
+Referenced by:
+    TABLE "order_items" CONSTRAINT "order_items_product_id_fkey" FOREIGN KEY (product_id) REFERENCES products(id)
+Triggers:
+    update_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()
+
