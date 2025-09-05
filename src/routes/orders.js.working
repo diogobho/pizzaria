@@ -79,15 +79,11 @@ router.get('/', authenticateToken, requireOwner, async (req, res) => {
 });
 
 // Create order
-// Create new order
 router.post('/', authenticateToken, [
   body('items').isArray({ min: 1 }).withMessage('Pedido deve ter pelo menos 1 item'),
   body('items.*.product_id').notEmpty().withMessage('ID do produto inválido'),
   body('items.*.quantidade').isInt({ min: 1 }).withMessage('Quantidade deve ser maior que 0'),
-  body('observacao').optional().trim(),
-  body('cliente_nome').trim().isLength({ min: 2 }).withMessage('Nome do cliente é obrigatório'),
-  body('cliente_telefone').trim().isLength({ min: 8 }).withMessage('Telefone do cliente é obrigatório'),
-  body('cliente_endereco').trim().isLength({ min: 10 }).withMessage('Endereço do cliente é obrigatório')
+  body('observacao').optional().trim()
 ], async (req, res) => {
   const client = await pool.connect();
   
@@ -100,7 +96,7 @@ router.post('/', authenticateToken, [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { items, observacao, cliente_nome, cliente_telefone, cliente_endereco } = req.body;
+    const { items, observacao } = req.body;
     const userId = req.user.id;
 
     // Validate products and calculate total
@@ -142,8 +138,8 @@ router.post('/', authenticateToken, [
 
     // Create order
     const orderResult = await client.query(
-      'INSERT INTO orders (user_id, total, observacao, status, cliente_nome, cliente_telefone, cliente_endereco) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [userId, total, observacao, 'nao_iniciado', cliente_nome, cliente_telefone, cliente_endereco]
+      'INSERT INTO orders (user_id, status, observacao, total) VALUES ($1, $2, $3, $4) RETURNING *',
+      [userId, 'nao_iniciado', observacao, total]
     );
 
     const order = orderResult.rows[0];
@@ -151,31 +147,6 @@ router.post('/', authenticateToken, [
     // Create order items
     for (const item of validatedItems) {
       await client.query(
-        'INSERT INTO order_items (order_id, product_id, product_name, quantidade, preco_unit, observacao) VALUES ($1, $2, $3, $4, $5, $6)',
-        [order.id, item.product_id, item.product_name, item.quantidade, item.preco_unit, item.observacao]
-      );
-    }
-
-    await client.query('COMMIT');
-
-    // Clear user's cart from Redis
-    await redisClient.del(`cart:${userId}`);
-
-    res.status(201).json({
-      message: 'Pedido criado com sucesso',
-      order: {
-        ...order,
-        items: validatedItems
-      }
-    });
-  } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Create order error:', error);
-    res.status(500).json({ error: 'Erro ao criar pedido' });
-  } finally {
-    client.release();
-  }
-});
         'INSERT INTO order_items (order_id, product_id, product_name, quantidade, preco_unit, observacao) VALUES ($1, $2, $3, $4, $5, $6)',
         [order.id, item.product_id, item.product_name, item.quantidade, item.preco_unit, item.observacao]
       );
