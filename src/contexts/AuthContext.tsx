@@ -10,32 +10,15 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// Mock users for demonstration
-const mockUsers: Array<User & { senha: string }> = [
-  {
-    id: '1',
-    nome: 'Cliente Teste',
-    email: 'cliente@teste.com',
-    senha: '123456',
-    tipo: 'cliente'
-  },
-  {
-    id: '2', 
-    nome: 'Rodrigo',
-    email: 'rodrigo@pizzaria.com',
-    senha: 'admin123',
-    tipo: 'proprietario'
-  }
-];
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored user
+    // Check for stored user and token
     const storedUser = localStorage.getItem('pizzaria_user');
-    if (storedUser) {
+    const storedToken = localStorage.getItem('pizzaria_token');
+    if (storedUser && storedToken) {
       setUser(JSON.parse(storedUser));
     }
     setIsLoading(false);
@@ -44,17 +27,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, senha: string): Promise<boolean> => {
     setIsLoading(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const foundUser = mockUsers.find(u => u.email === email && u.senha === senha);
-    
-    if (foundUser) {
-      const { senha: _, ...userWithoutPassword } = foundUser;
-      setUser(userWithoutPassword);
-      localStorage.setItem('pizzaria_user', JSON.stringify(userWithoutPassword));
-      setIsLoading(false);
-      return true;
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, senha }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.user && data.token) {
+        setUser(data.user);
+        localStorage.setItem('pizzaria_user', JSON.stringify(data.user));
+        localStorage.setItem('pizzaria_token', data.token);
+        setIsLoading(false);
+        return true;
+      }
+    } catch (error) {
+      console.error('Login error:', error);
     }
     
     setIsLoading(false);
@@ -64,6 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('pizzaria_user');
+    localStorage.removeItem('pizzaria_token');
   };
 
   return (

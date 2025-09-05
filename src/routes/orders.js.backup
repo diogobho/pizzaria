@@ -138,11 +138,57 @@ router.post('/', authenticateToken, [
 
     // Create order
     const orderResult = await client.query(
-      INSERT INTO orders (
-        user_id, total, observacao, status,
-        cliente_nome, cliente_telefone, cliente_endereco
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING *
+      'INSERT INTO orders (user_id, status, observacao, total) VALUES ($1, $2, $3, $4) RETURNING *',
+      [userId, 'nao_iniciado', observacao, total]
+    );
+
+    const order = orderResult.rows[0];
+
+    // Create order items
+    for (const item of validatedItems) {
+      await client.query(
+        'INSERT INTO order_items (order_id, product_id, product_name, quantidade, preco_unit, observacao) VALUES ($1, $2, $3, $4, $5, $6)',
+        [order.id, item.product_id, item.product_name, item.quantidade, item.preco_unit, item.observacao]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    // Clear user's cart from Redis
+    await redisClient.del(`cart:${userId}`);
+
+    res.status(201).json({
+      message: 'Pedido criado com sucesso',
+      order: {
+        ...order,
+        items: validatedItems
+      }
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Create order error:', error);
+    res.status(500).json({ error: 'Erro ao criar pedido' });
+  } finally {
+    client.release();
+  }
+});
+
+// Update order status (Owner only)
+router.patch('/:id/status', authenticateToken, requireOwner, [
+  body('status').isIn(['nao_iniciado', 'em_andamento', 'finalizado']).withMessage('Status inválido'),
+  body('entregador').optional().trim()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { id } = req.params;
+    const { status, entregador } = req.body;
+
+    const result = await pool.query(
+      'UPDATE orders SET status = $1, entregador = $2 WHERE id = $3 RETURNING *',
       [status, entregador, id]
     );
 

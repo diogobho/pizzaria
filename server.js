@@ -32,18 +32,18 @@ const PORT = process.env.PORT || 3000;
 app.set('trust proxy', 1);
 
 // Security middleware
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "https:", "blob:"],
-      scriptSrc: ["'self'"],
-      connectSrc: ["'self'"]
-    }
-  }
-}));
+//app.use(helmet({
+//  contentSecurityPolicy: {
+//    directives: {
+//      defaultSrc: ["'self'"],
+//      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+//      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+//      imgSrc: ["'self'", "data:", "https:", "blob:"],
+//      scriptSrc: ["'self'"],
+//      connectSrc: ["'self'"]
+//    }
+//  }
+//}));
 
 // CORS configuration
 app.use(cors({

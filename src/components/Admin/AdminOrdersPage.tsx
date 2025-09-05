@@ -48,8 +48,63 @@ export function AdminOrdersPage() {
   };
 
   const handleGeneratePDF = (orderId: string) => {
-    // In a real app, this would generate a PDF
-    alert(`PDF gerado para o pedido #${orderId.slice(-6).toUpperCase()}`);
+    // Criar modal com detalhes do pedido para impressão
+    const order = filteredOrders.find(o => o.id === orderId);
+    if (!order) return;
+    
+    const printWindow = window.open("", "_blank");
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Nota Fiscal - Pedido #${orderId.slice(-6).toUpperCase()}</title>
+        <style>
+          body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; }
+          .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 20px; }
+          .info { display: flex; justify-content: space-between; margin-bottom: 20px; }
+          .item { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #eee; }
+          .total { text-align: right; font-size: 18px; font-weight: bold; margin-top: 20px; }
+          @media print { button { display: none; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Rodrigos Delivery</h1>
+          <p>Pizza Artesanal com Sabor Único</p>
+          <p>Telefone: (11) 99999-9999</p>
+        </div>
+        <div class="info">
+          <div>
+            <h3>Pedido #${orderId.slice(-6).toUpperCase()}</h3>
+            <p>Data: ${order.createdAt.toLocaleString("pt-BR")}</p>
+            <p>Status: ${order.status}</p>
+          </div>
+          <div>
+            <h3>Cliente</h3>
+            <p>Total: R$ ${order.total.toFixed(2)}</p>
+          </div>
+        </div>
+        <div>
+          <h3>Itens do Pedido</h3>
+          ${order.items.map(item => `
+            <div class="item">
+              <span>${item.quantidade}x ${item.productName}</span>
+              <span>R$ ${(item.quantidade * item.precoUnit).toFixed(2)}</span>
+            </div>
+            ${item.observacao ? `<div style="font-size: 12px; color: #666; margin-left: 20px;">Obs: ${item.observacao}</div>` : ""}
+          `).join("")}
+        </div>
+        <div class="total">Total: R$ ${order.total.toFixed(2)}</div>
+        ${order.observacao ? `<div><strong>Observações:</strong> ${order.observacao}</div>` : ""}
+        <div style="margin-top: 30px; text-align: center;">
+          <button onclick="window.print()">Imprimir / Salvar PDF</button>
+          <button onclick="window.close()">Fechar</button>
+        </div>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
   };
 
   const formatDate = (date: Date) => {
