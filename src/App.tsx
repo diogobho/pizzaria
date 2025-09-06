@@ -1,3 +1,4 @@
+import { clearOldMockData } from "./utils/clearOldData.js";
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
@@ -13,6 +14,7 @@ import { AdminProductsPage } from './components/Admin/AdminProductsPage';
 import { AdminOrdersPage } from './components/Admin/AdminOrdersPage';
 
 function AppContent() {
+  clearOldMockData();
   const { user, isLoading } = useAuth();
   const [currentPage, setCurrentPage] = useState('home');
 
@@ -64,6 +66,7 @@ function AppContent() {
 }
 
 function App() {
+  clearOldMockData();
   return (
     <AuthProvider>
       <CartProvider>
