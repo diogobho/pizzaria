@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Package } from 'lucide-react';
-import { mockProducts } from '../../data/mockData';
 import { Product } from '../../types';
 
 const categoryNames = {
@@ -11,7 +10,8 @@ const categoryNames = {
 };
 
 export function AdminProductsPage() {
-  const [products, setProducts] = useState(mockProducts);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
@@ -22,6 +22,22 @@ export function AdminProductsPage() {
     estoque: 0,
     imagem: ''
   });
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch('/api/products');
+      const data = await response.json();
+      setProducts(data);
+    } catch (error) {
+      console.error('Erro ao carregar produtos:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleOpenModal = (product?: Product) => {
     if (product) {
@@ -53,33 +69,59 @@ export function AdminProductsPage() {
     setEditingProduct(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (editingProduct) {
-      // Update existing product
-      setProducts(prev => prev.map(p => 
-        p.id === editingProduct.id 
-          ? { ...p, ...formData }
-          : p
-      ));
-    } else {
-      // Add new product
-      const newProduct: Product = {
-        id: `product-${Date.now()}`,
-        ...formData
-      };
-      setProducts(prev => [...prev, newProduct]);
+    try {
+      const token = localStorage.getItem('pizzaria_token');
+      const url = editingProduct ? `/api/products/${editingProduct.id}` : '/api/products';
+      const method = editingProduct ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        await fetchProducts();
+        handleCloseModal();
+        alert(editingProduct ? 'Produto atualizado!' : 'Produto criado!');
+      }
+    } catch (error) {
+      console.error('Erro ao salvar produto:', error);
+      alert('Erro ao salvar produto');
     }
-    
-    handleCloseModal();
   };
 
-  const handleDelete = (productId: string) => {
-    if (confirm('Tem certeza que deseja excluir este produto?')) {
-      setProducts(prev => prev.filter(p => p.id !== productId));
+  const handleDelete = async (productId: string) => {
+    if (!confirm('Tem certeza que deseja excluir este produto?')) return;
+    
+    try {
+      const token = localStorage.getItem('pizzaria_token');
+      const response = await fetch(`/api/products/${productId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : ''
+        }
+      });
+
+      if (response.ok) {
+        await fetchProducts();
+        alert('Produto excluído!');
+      }
+    } catch (error) {
+      console.error('Erro ao excluir produto:', error);
+      alert('Erro ao excluir produto');
     }
   };
+
+  if (isLoading) {
+    return <div className="text-center py-8">Carregando produtos...</div>;
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -97,7 +139,6 @@ export function AdminProductsPage() {
         </button>
       </div>
 
-      {/* Products Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {products.map((product) => (
           <div key={product.id} className="bg-white rounded-2xl shadow-lg overflow-hidden">
@@ -113,9 +154,7 @@ export function AdminProductsPage() {
                   {categoryNames[product.categoria]}
                 </span>
               </div>
-              
               <p className="text-gray-600 text-sm mb-3">{product.descricao}</p>
-              
               <div className="flex justify-between items-center mb-4">
                 <div className="text-xl font-bold text-red-600">
                   R$ {product.preco.toFixed(2)}
@@ -125,7 +164,6 @@ export function AdminProductsPage() {
                   <span className="text-sm">{product.estoque}</span>
                 </div>
               </div>
-              
               <div className="flex space-x-2">
                 <button
                   onClick={() => handleOpenModal(product)}
@@ -147,7 +185,6 @@ export function AdminProductsPage() {
         ))}
       </div>
 
-      {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
@@ -155,7 +192,6 @@ export function AdminProductsPage() {
               <h2 className="text-2xl font-bold text-gray-800 mb-6">
                 {editingProduct ? 'Editar Produto' : 'Novo Produto'}
               </h2>
-              
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -169,7 +205,6 @@ export function AdminProductsPage() {
                     required
                   />
                 </div>
-                
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Categoria
@@ -185,7 +220,6 @@ export function AdminProductsPage() {
                     <option value="refrigerantes">Refrigerantes</option>
                   </select>
                 </div>
-                
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Descrição
@@ -198,7 +232,6 @@ export function AdminProductsPage() {
                     required
                   />
                 </div>
-                
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -214,7 +247,6 @@ export function AdminProductsPage() {
                       required
                     />
                   </div>
-                  
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Estoque
@@ -229,7 +261,6 @@ export function AdminProductsPage() {
                     />
                   </div>
                 </div>
-                
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     URL da Imagem
@@ -242,7 +273,6 @@ export function AdminProductsPage() {
                     placeholder="https://exemplo.com/imagem.jpg"
                   />
                 </div>
-                
                 <div className="flex space-x-3 pt-4">
                   <button
                     type="button"
