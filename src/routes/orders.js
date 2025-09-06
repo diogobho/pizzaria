@@ -83,7 +83,10 @@ router.post('/', authenticateToken, [
   body('items').isArray({ min: 1 }).withMessage('Pedido deve ter pelo menos 1 item'),
   body('items.*.product_id').notEmpty().withMessage('ID do produto inválido'),
   body('items.*.quantidade').isInt({ min: 1 }).withMessage('Quantidade deve ser maior que 0'),
-  body('observacao').optional().trim()
+  body('observacao').optional().trim(),
+  body('cliente_nome').trim().isLength({ min: 2 }).withMessage('Nome do cliente é obrigatório'),
+  body('cliente_telefone').trim().isLength({ min: 8 }).withMessage('Telefone do cliente é obrigatório'),
+  body('cliente_endereco').trim().isLength({ min: 10 }).withMessage('Endereço do cliente é obrigatório')
 ], async (req, res) => {
   const client = await pool.connect();
   
