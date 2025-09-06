@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Plus, Minus } from 'lucide-react';
+import { mockProducts } from '../../data/mockData';
 import { Product } from '../../types';
 import { useCart } from '../../contexts/CartContext';
 
@@ -23,28 +24,9 @@ export function CardapioPage() {
   const [observations, setObservations] = useState<{ [key: string]: string }>({});
   const { addToCart } = useCart();
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await fetch("/api/products");
-        const data = await response.json();
-        setProducts(data);
-      } catch (error) {
-        console.error("Erro ao carregar produtos:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchProducts();
-  }, []);
-
   const filteredProducts = selectedCategory === 'all' 
-    ? products 
-    : products.filter(product => product.categoria === selectedCategory);
+    ? mockProducts 
+    : mockProducts.filter(product => product.categoria === selectedCategory);
 
   const handleQuantityChange = (productId: string, change: number) => {
     setQuantities(prev => ({
