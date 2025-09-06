@@ -96,7 +96,7 @@ router.post('/', authenticateToken, [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { items, observacao } = req.body;
+    const { items, observacao, cliente_nome, cliente_telefone, cliente_endereco } = req.body;
     const userId = req.user.id;
 
     // Validate products and calculate total
@@ -138,8 +138,8 @@ router.post('/', authenticateToken, [
 
     // Create order
     const orderResult = await client.query(
-      'INSERT INTO orders (user_id, status, observacao, total) VALUES ($1, $2, $3, $4) RETURNING *',
-      [userId, 'nao_iniciado', observacao, total]
+      'INSERT INTO orders (user_id, total, observacao, status, cliente_nome, cliente_telefone, cliente_endereco) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [userId, total, observacao, 'nao_iniciado', cliente_nome, cliente_telefone, cliente_endereco]
     );
 
     const order = orderResult.rows[0];
