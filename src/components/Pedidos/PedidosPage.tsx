@@ -1,9 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Clock, CheckCircle, AlertCircle, Repeat } from 'lucide-react';
-import { mockOrders } from '../../data/mockData';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
-import { mockProducts } from '../../data/mockData';
 
 const statusConfig = {
   nao_iniciado: {
@@ -26,36 +24,69 @@ const statusConfig = {
 export function PedidosPage() {
   const { user } = useAuth();
   const { addToCart } = useCart();
-  
-  // Filter orders for current user
-  const userOrders = mockOrders.filter(order => order.userId === user?.id);
+  const [orders, setOrders] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleRepeatOrder = (orderId: string) => {
-    const order = userOrders.find(o => o.id === orderId);
-    if (!order) return;
+  useEffect(() => {
+    fetchOrders();
+  }, []);
 
-    // Add all items from the order back to cart
-    order.items.forEach(item => {
-      const product = mockProducts.find(p => p.id === item.productId);
-      if (product) {
-        addToCart(product, item.quantidade, item.observacao);
-      }
-    });
-
-    alert('Itens adicionados ao carrinho!');
+  const fetchOrders = async () => {
+    try {
+      const token = localStorage.getItem('pizzaria_token');
+      const response = await fetch('/api/orders/my-orders', {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : ''
+        }
+      });
+      const data = await response.json();
+      setOrders(data);
+    } catch (error) {
+      console.error('Erro ao carregar pedidos:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const formatDate = (date: Date) => {
+  const handleRepeatOrder = async (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
+    try {
+      // Get fresh product data from API
+      const response = await fetch('/api/products');
+      const products = await response.json();
+
+      // Add items to cart using real product data
+      order.items.forEach(item => {
+        const product = products.find(p => p.id === item.product_id);
+        if (product) {
+          addToCart(product, item.quantidade, item.observacao);
+        }
+      });
+
+      alert('Itens adicionados ao carrinho!');
+    } catch (error) {
+      console.error('Erro ao repetir pedido:', error);
+      alert('Erro ao repetir pedido');
+    }
+  };
+
+  const formatDate = (dateString: string) => {
     return new Intl.DateTimeFormat('pt-BR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
-    }).format(date);
+    }).format(new Date(dateString));
   };
 
-  if (userOrders.length === 0) {
+  if (isLoading) {
+    return <div className="text-center py-8">Carregando pedidos...</div>;
+  }
+
+  if (orders.length === 0) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center">
         <Clock size={64} className="mx-auto text-gray-400 mb-6" />
@@ -63,12 +94,6 @@ export function PedidosPage() {
         <p className="text-xl text-gray-600 mb-8">
           Que tal fazer seu primeiro pedido?
         </p>
-        <button
-          onClick={() => window.location.reload()} // In a real app, use proper navigation
-          className="bg-red-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-red-700 transition-colors"
-        >
-          Ver Cardápio
-        </button>
       </div>
     );
   }
@@ -76,22 +101,21 @@ export function PedidosPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold text-gray-800 mb-8">Meus Pedidos</h1>
-
+      
       <div className="space-y-6">
-        {userOrders.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).map((order) => {
+        {orders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map((order) => {
           const statusInfo = statusConfig[order.status];
           const StatusIcon = statusInfo.icon;
-
+          
           return (
             <div key={order.id} className="bg-white rounded-2xl shadow-lg overflow-hidden">
               <div className="p-6">
-                {/* Order Header */}
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-800">
                       Pedido #{order.id.slice(-6).toUpperCase()}
                     </h3>
-                    <p className="text-gray-600">{formatDate(order.createdAt)}</p>
+                    <p className="text-gray-600">{formatDate(order.created_at)}</p>
                   </div>
                   <div className="flex items-center space-x-3">
                     <span className={`px-3 py-1 rounded-full text-sm font-semibold flex items-center space-x-1 ${statusInfo.color}`}>
@@ -108,20 +132,17 @@ export function PedidosPage() {
                   </div>
                 </div>
 
-                {/* Order Items */}
                 <div className="border-t border-gray-200 pt-4">
                   <div className="space-y-2 mb-4">
-                    {order.items.map((item) => (
-                      <div key={item.id} className="flex justify-between items-center">
+                    {order.items.map((item, index) => (
+                      <div key={index} className="flex justify-between items-center">
                         <div className="flex-1">
-                          <span className="font-medium">{item.quantidade}x {item.productName}</span>
+                          <span className="font-medium">{item.quantidade}x {item.product_name}</span>
                           {item.observacao && (
                             <p className="text-sm text-orange-600">Obs: {item.observacao}</p>
                           )}
                         </div>
-                        <span className="font-semibold">
-                          R$ {(item.quantidade * item.precoUnit).toFixed(2)}
-                        </span>
+                        <span className="font-semibold">R$ {(item.quantidade * item.preco_unit).toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
